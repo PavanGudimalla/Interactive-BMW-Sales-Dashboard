@@ -1,0 +1,565 @@
+BMW Sales Dashboard Project
+import pandas as pd
+import plotly.graph_objects as go
+
+df = pd.read_csv('BMW sales data (2010-2024).csv')
+df.head()
+Model	Year	Region	Color	Fuel_Type	Transmission	Engine_Size_L	Mileage_KM	Price_USD	Sales_Volume	Sales_Classification
+0	5 Series	2016	Asia	Red	Petrol	Manual	3.5	151748	98740	8300	High
+1	i8	2013	North America	Red	Hybrid	Automatic	1.6	121671	79219	3428	Low
+2	5 Series	2022	North America	Blue	Petrol	Automatic	4.5	10991	113265	6994	Low
+3	X3	2024	Middle East	Blue	Petrol	Automatic	1.7	27255	60971	4047	Low
+4	7 Series	2020	South America	Black	Diesel	Manual	2.1	122131	49898	3080	Low
+Visualization 1 - Sales Volume and Avg Price by Model
+region = "Europe"
+year = 2020
+models = ["3 Series", "5 Series"]
+
+# Aggregation
+dff = df[(df["Region"] == region) & (df["Year"] == year)]
+dff = dff[dff["Model"].isin(models)]
+
+agg_viz1 = (
+    dff.groupby("Model", as_index=False)
+       .agg({"Sales_Volume": "sum", "Price_USD": "mean"})
+       .sort_values("Sales_Volume", ascending=False)
+)
+
+# Plot
+fig1 = go.Figure()
+fig1.add_bar(x=agg_viz1["Model"], y=agg_viz1["Sales_Volume"], name="Sales volume")
+fig1.add_scatter(x=agg_viz1["Model"], y=agg_viz1["Price_USD"], name="Average price", mode="lines+markers", yaxis="y2")
+fig1.update_layout(
+    title=f"Sales volume and average price by model – {region}, {year}",
+    xaxis_title="Model",
+    yaxis_title="Sales volume",
+    yaxis2=dict(title="Average price", overlaying="y", side="right")
+)
+fig1.show()
+Visualization 2 - Model Market Share
+import plotly.express as px
+
+fig2 = px.pie(
+    agg_viz1,
+    names="Model",
+    values="Sales_Volume",
+    title=f"Model sales share – {region}, {year}"
+)
+fig2.show()
+Visualization 3 - Sales Volume by Region and Transmission
+trans_list = ["Automatic", "Manual"]
+
+# Aggregation
+dff = df[df["Transmission"].isin(trans_list)]
+agg_viz3 = (
+    dff.groupby(["Region", "Transmission"], as_index=False)["Sales_Volume"]
+       .sum()
+)
+
+# Plot
+fig3 = px.bar(
+    agg_viz3,
+    x="Region",
+    y="Sales_Volume",
+    color="Transmission",
+    barmode="group",
+    title="Sales volume by region and transmission"
+)
+fig3.show()
+Visualization 4 - Sales Volume Trend by Fuel Type Over Time
+agg_v4 = df.groupby(['Fuel_Type', 'Year'], as_index=False)['Sales_Volume'].sum()
+heat_v4 = agg_v4.pivot(index='Fuel_Type', columns='Year', values='Sales_Volume')
+
+fig_v4 = px.imshow(
+    heat_v4,
+    labels=dict(color="Sales Volume"),
+    title='Sales Volume by Fuel Type and Year'
+)
+fig_v4.show()
+Visualization 5 - Price vs Sales Volume by Model
+region5 = "Africa"
+models5 = sorted(df[df["Region"] == region5]["Model"].unique())
+year_min, year_max = 2015, 2020  
+
+dff5 = df[
+    (df["Region"] == region5) &
+    (df["Model"].isin(models5)) &
+    (df["Year"] >= year_min) &
+    (df["Year"] <= year_max)
+]
+
+agg5 = (dff5
+        .groupby("Model", as_index=False)
+        .agg({"Sales_Volume": "sum", "Price_USD": "mean"}))
+
+fig5 = px.scatter(
+    agg5,
+    x="Price_USD",
+    y="Sales_Volume",
+    color="Model",
+    size="Sales_Volume",
+    title=f"Price vs sales volume – {region5}, {year_min}–{year_max}",
+    labels={"Price_USD": "Average price (USD)", "Sales_Volume": "Sales volume (units)"}
+)
+
+fig5.show()
+Interactive Dashboard
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from dash import Dash, dcc, html, Input, Output
+
+# BMW dataset
+df = pd.read_csv("BMW sales data (2010-2024).csv")
+df["Year"] = df["Year"].astype(int)
+
+regions = sorted(df["Region"].unique())
+transmissions = sorted(df["Transmission"].unique())
+fuel_types = sorted(df["Fuel_Type"].unique())
+years_sorted = sorted(df["Year"].unique())
+
+DASH_BG = "#102840"     
+GRID_COLOR = "#2b3f5f"
+FONT_COLOR = "white"
+BAR_COLOR = "#1f77b4"    
+LINE_COLOR = "#ff7f0e"   
+BASE_FONT = dict(color=FONT_COLOR, size=12, family="Arial")
+TITLE_FONT = dict(color=FONT_COLOR, size=14, family="Arial")
+
+# layout
+app = Dash(__name__)
+
+app.layout = html.Div(
+    style={
+        "backgroundColor": "#0B1E33",
+        "padding": "20px",
+        "fontFamily": "Arial, sans-serif"
+    },
+    children=[
+        # Title 
+        html.Div([
+            html.H1("BMW Sales Dashboard", style={"margin": "0", "color": "white"}),
+            html.P(
+                "BMW global sales analysis by region, model, fuel type, and transmission (2010–2024)",
+                style={"color": "white", "margin": "4px 0 0 0", "fontSize": "12px"}
+            )
+        ], style={
+            "backgroundColor": "#013A63",
+            "border": "2px solid #0F4C81",
+            "padding": "10px 20px",
+            "marginBottom": "20px",
+            "borderRadius": "8px"
+        }),
+
+        # MAIN Layout Rows
+        html.Div([
+            # LEFT: visualizations
+            html.Div([
+                # Row 1: Viz 1 and Viz 2
+                html.Div([
+                    html.Div([
+                        html.H3("Viz 1: Sales volume and average price by model",
+                                style={"color": "white"}),
+                        dcc.Graph(id="viz1"),
+                    ], style={"width": "50%", "display": "inline-block",
+                              "verticalAlign": "top"}),
+
+                    html.Div([
+                        html.H3("Viz 2: Model market share",
+                                style={"color": "white"}),
+                        dcc.Graph(id="viz2"),
+                    ], style={"width": "50%", "display": "inline-block",
+                              "verticalAlign": "top"}),
+                ], style={"marginBottom": "10px"}),
+
+                # Row 2: Viz 3 and Viz 4
+                html.Div([
+                    html.Div([
+                        html.H3("Viz 3: Sales volume by region and transmission",
+                                style={"color": "white"}),
+                        dcc.Graph(id="viz3"),
+                    ], style={"width": "50%", "display": "inline-block",
+                              "verticalAlign": "top"}),
+
+                    html.Div([
+                        html.H3("Viz 4: Fuel type sales trend over time",
+                                style={"color": "white"}),
+                        dcc.Graph(id="viz4"),
+                    ], style={"width": "50%", "display": "inline-block",
+                              "verticalAlign": "top"}),
+                ], style={"marginBottom": "10px"}),
+
+                # Row 3: Viz 5 + slider
+                html.Div([
+                    html.H3("Viz 5: Price vs sales volume by model",
+                            style={"color": "white"}),
+                    html.Label("Year range (for Viz 5)",
+                               style={"color": "white"}),
+                    dcc.RangeSlider(
+                        id="year_range",
+                        min=int(years_sorted[0]),
+                        max=int(years_sorted[-1]),
+                        value=[int(years_sorted[0]), int(years_sorted[-1])],
+                        marks={int(y): str(int(y)) for y in years_sorted},
+                        step=None
+                    ),
+                    dcc.Graph(id="viz5"),
+                ], style={"marginTop": "10px"}),
+            ], style={
+                "width": "68%",                
+                "display": "inline-block",
+                "verticalAlign": "top",
+                "backgroundColor": DASH_BG,
+                "border": "1px solid #1f3b5b",
+                "padding": "15px",
+                "borderRadius": "8px",
+                "color": "white",
+                "boxSizing": "border-box"
+            }),
+
+            # RIGHT: filters and BMW logo
+            html.Div([
+                html.H3("Filters", style={"color": "white"}),
+
+                html.Img(
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/44/BMW.svg",
+                    style={"width": "80px", "marginBottom": "10px"}
+                ),
+
+                html.H4("Region", style={"color": "white"}),
+                dcc.RadioItems(
+                    id="region_radio",
+                    options=[{"label": r, "value": r} for r in regions],
+                    value=regions[0],
+                    labelStyle={"display": "block", "color": "white"}
+                ),
+
+                html.H4("Year", style={"color": "white"}),
+                dcc.Dropdown(
+                    id="year_dropdown",
+                    options=[],
+                    value=None,
+                    clearable=False,
+                    style={"backgroundColor": "#f0f0f0", "color": "black"}
+                ),
+
+                html.H4("Model", style={"color": "white"}),
+                dcc.Dropdown(
+                    id="model_dropdown",
+                    options=[],
+                    value=[],
+                    multi=True,
+                    style={"backgroundColor": "#f0f0f0", "color": "black"}
+                ),
+
+                html.H4("Transmission (for Viz 3)", style={"color": "white"}),
+                dcc.Checklist(
+                    id="trans_check",
+                    options=[{"label": t, "value": t} for t in transmissions],
+                    value=transmissions,
+                    labelStyle={"display": "block", "color": "white"}
+                ),
+
+                html.H4("Fuel type (for Viz 4)", style={"color": "white"}),
+                dcc.Checklist(
+                    id="fuel_check",
+                    options=[{"label": f, "value": f} for f in fuel_types],
+                    value=fuel_types,
+                    labelStyle={"display": "block", "color": "white"}
+                ),
+            ], style={
+                "width": "28%",
+                "display": "inline-block",
+                "verticalAlign": "top",
+                "marginLeft": "2%",
+                "backgroundColor": DASH_BG,
+                "border": "1px solid #1f3b5b",
+                "padding": "15px",
+                "borderRadius": "8px",
+                "boxSizing": "border-box"
+            }),
+        ], style={"whiteSpace": "nowrap"})   
+    ]
+)
+
+# callbacks
+
+@app.callback(
+    Output("year_dropdown", "options"),
+    Output("year_dropdown", "value"),
+    Input("region_radio", "value")
+)
+def set_year_options(sel_region):
+    dff = df[df["Region"] == sel_region]
+    years = sorted(dff["Year"].unique())
+    options = [{"label": int(y), "value": int(y)} for y in years]
+    value = years[0] if years else None
+    return options, value
+
+
+@app.callback(
+    Output("model_dropdown", "options"),
+    Output("model_dropdown", "value"),
+    Input("region_radio", "value"),
+    Input("year_dropdown", "value")
+)
+def set_model_options(sel_region, sel_year):
+    if sel_year is None:
+        return [], []
+    dff = df[(df["Region"] == sel_region) & (df["Year"] == sel_year)]
+    models = sorted(dff["Model"].unique())
+    options = [{"label": m, "value": m} for m in models]
+    return options, models
+
+# Viz 1 and Viz 2
+
+@app.callback(
+    Output("viz1", "figure"),
+    Output("viz2", "figure"),
+    Input("region_radio", "value"),
+    Input("year_dropdown", "value"),
+    Input("model_dropdown", "value")
+)
+def update_viz1_viz2(region, year, models):
+    if year is None or not models:
+        fig_empty = go.Figure()
+        fig_empty.update_layout(
+            title="Select region, year, and at least one model.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig_empty, fig_empty
+
+    dff = df[(df["Region"] == region) & (df["Year"] == year)]
+    dff = dff[dff["Model"].isin(models)]
+
+    if dff.empty:
+        fig_empty = go.Figure()
+        fig_empty.update_layout(
+            title="No data for this selection.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig_empty, fig_empty
+
+    agg = (dff
+           .groupby("Model", as_index=False)
+           .agg({"Sales_Volume": "sum", "Price_USD": "mean"})
+           .sort_values("Sales_Volume", ascending=False))
+
+    # bar + line
+    fig1 = go.Figure()
+    fig1.add_bar(
+        x=agg["Model"],
+        y=agg["Sales_Volume"],
+        name="Sales volume",
+        marker_color=BAR_COLOR
+    )
+    fig1.add_scatter(
+        x=agg["Model"],
+        y=agg["Price_USD"],
+        name="Average price (USD)",
+        mode="lines+markers",
+        yaxis="y2",
+        line=dict(color=LINE_COLOR)
+    )
+    fig1.update_layout(
+        title=f"Sales volume and average price by model – {region}, {year}",
+        xaxis_title="Model",
+        yaxis_title="Sales volume (units)",
+        yaxis2=dict(
+            title="Average price (USD)",
+            overlaying="y",
+            side="right"
+        ),
+        plot_bgcolor=DASH_BG,
+        paper_bgcolor=DASH_BG,
+        font=BASE_FONT,
+        title_font=TITLE_FONT,
+        xaxis=dict(gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR),
+        legend=dict(font=BASE_FONT)
+    )
+
+    # pie chart
+    fig2 = px.pie(
+        agg,
+        names="Model",
+        values="Sales_Volume",
+        title=f"Model sales share – {region}, {year}",
+        hole=0.4
+    )
+    fig2.update_layout(
+        plot_bgcolor=DASH_BG,
+        paper_bgcolor=DASH_BG,
+        font=BASE_FONT,
+        title_font=TITLE_FONT,
+        legend=dict(font=BASE_FONT)
+    )
+
+    return fig1, fig2
+
+
+# Viz 3: transmission vs region
+
+@app.callback(
+    Output("viz3", "figure"),
+    Input("trans_check", "value")
+)
+def update_viz3(trans_list):
+    if not trans_list:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Select at least one transmission type.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig
+
+    dff = df[df["Transmission"].isin(trans_list)]
+    g3 = dff.groupby(["Region", "Transmission"], as_index=False)["Sales_Volume"].sum()
+
+    fig3 = px.bar(
+        g3,
+        x="Region",
+        y="Sales_Volume",
+        color="Transmission",
+        barmode="group",
+        title="Sales volume by region and transmission",
+        labels={"Sales_Volume": "Sales volume (units)"}
+    )
+    fig3.update_layout(
+        plot_bgcolor=DASH_BG,
+        paper_bgcolor=DASH_BG,
+        font=BASE_FONT,
+        title_font=TITLE_FONT,
+        xaxis=dict(gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR),
+        legend=dict(font=BASE_FONT)
+    )
+    return fig3
+
+# Viz 4: fuel type heatmap
+@app.callback(
+    Output("viz4", "figure"),
+    Input("fuel_check", "value")
+)
+def update_viz4(fuel_list):
+    if not fuel_list:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Select at least one fuel type.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig
+
+    dff = df[df["Fuel_Type"].isin(fuel_list)]
+    g4 = dff.groupby(["Fuel_Type", "Year"], as_index=False)["Sales_Volume"].sum()
+
+    pivot = g4.pivot(index="Fuel_Type", columns="Year", values="Sales_Volume")
+
+    fig4 = px.imshow(
+        pivot,
+        labels={"x": "Year", "y": "Fuel type", "color": "Sales volume (units)"},
+        title="Sales volume trend by fuel type over time"
+    )
+    fig4.update_layout(
+        plot_bgcolor=DASH_BG,
+        paper_bgcolor=DASH_BG,
+        font=BASE_FONT,
+        title_font=TITLE_FONT,
+        legend=dict(font=BASE_FONT)
+    )
+    return fig4
+
+
+
+# Viz 5: price vs sales volume, year range
+
+@app.callback(
+    Output("viz5", "figure"),
+    Input("region_radio", "value"),
+    Input("model_dropdown", "value"),
+    Input("year_range", "value")
+)
+def update_viz5(region, models, year_range):
+    if not models:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Select at least one model.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig
+
+    year_min, year_max = year_range
+    dff = df[
+        (df["Region"] == region) &
+        (df["Model"].isin(models)) &
+        (df["Year"] >= year_min) &
+        (df["Year"] <= year_max)
+    ]
+
+    if dff.empty:
+        fig = go.Figure()
+        fig.update_layout(
+            title="No data for this selection.",
+            plot_bgcolor=DASH_BG,
+            paper_bgcolor=DASH_BG,
+            font=BASE_FONT,
+            title_font=TITLE_FONT
+        )
+        return fig
+
+    agg = (
+        dff.groupby("Model", as_index=False)
+           .agg({"Sales_Volume": "sum", "Price_USD": "mean"})
+    )
+
+    min_vol = agg["Sales_Volume"].min()
+    agg["SizeScaled"] = (agg["Sales_Volume"] - min_vol) + 1
+
+    fig5 = px.scatter(
+        agg,
+        x="Price_USD",
+        y="Sales_Volume",
+        color="Model",
+        size="SizeScaled",
+        size_max=80,
+        title=f"Price vs sales volume – {region}, {year_min}–{year_max}",
+        labels={
+            "Price_USD": "Average price (USD)",
+            "Sales_Volume": "Sales volume (units)"
+        }
+    )
+
+    fig5.update_traces(marker=dict(sizemode="area"))
+
+    fig5.update_layout(
+        plot_bgcolor=DASH_BG,
+        paper_bgcolor=DASH_BG,
+        font=BASE_FONT,
+        title_font=TITLE_FONT,
+        xaxis=dict(gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR),
+        legend=dict(font=BASE_FONT)
+    )
+
+    return fig5
+
+
+if __name__ == "__main__":
+    app.run_server(debug=False, port=8130)
+
+ 
