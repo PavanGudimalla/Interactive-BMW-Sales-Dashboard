@@ -16,3 +16,7 @@ The project was completed in May 2026 and followed these key stages:
 3. **Dashboard Prototyping**: Designing an intuitive user interface layout to ensure critical insights are front-and-center.
 4. **Development**: Implementing interactive filters and real-time data rendering components using Dash and Plotly.
 5. **Validation**: Ensuring data accuracy and dashboard performance through rigorous testing against known benchmarks.
+
+6. <img width="2071" height="1782" alt="Dashboard screenshot" src="https://github.com/user-attachments/assets/84b3b959-fc5e-40b1-82bc-0d03ced3bf11" />
+
+
