@@ -15,3 +15,6 @@ This project delivers a fully interactive, Python-based analytics dashboard desi
 
 ## 💡 Translation to Marketing & Media Planning
 The architecture of this dashboard directly translates to **Marketing Analytics and Media Planning**. The ability to segment audiences dynamically (by region, product preference, and timeline) and visualize market share is identical to analyzing campaign reach, audience penetration, and demographic ad performance. This tool demonstrates a high-level capability to build automated reporting systems that empower marketing teams to allocate budgets based on real-time regional performance.
+
+<img width="2071" height="1782" alt="Dashboard screenshot" src="https://github.com/user-attachments/assets/f90e64b3-67a1-4c82-9a9f-6339ffbbe875" />
+
